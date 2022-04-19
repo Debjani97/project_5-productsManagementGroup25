@@ -132,7 +132,8 @@ const orderCreation = async(req, res) => {
 };
 
 //updating order status.
-const updateOrder = async(req, res) => {
+
+const updateOrder = async (req, res) => {
     try {
         const userId = req.params.userId;
         const requestBody = req.body;
@@ -167,16 +168,20 @@ const updateOrder = async(req, res) => {
             res.status(401).send({ status: false, message: `Unauthorized access! User's info doesn't match` });
             return
         }
-
+        
         if (!orderId) {
             return res.status(400).send({
                 status: false,
-                message: `Order doesn't exists for ${orderId}`,
+                message: `OrderId is not given `,
             });
         }
 
+        if (!validator.isValidObjectId(orderId)) {
+            return res.status(400).send({ status: false, msg: "orderId is invalid" });
+        }
+
         //verifying does the order belongs to user or not.
-        isOrderBelongsToUser = await orderModel.findOne({ userId: userId });
+        isOrderBelongsToUser = await orderModel.findOne({ userId: userId});
         if (!isOrderBelongsToUser) {
             return res.status(400).send({
                 status: false,
@@ -237,19 +242,17 @@ const updateOrder = async(req, res) => {
 
         if (isOrderBelongsToUser['status'] == "pending") {
             if (status) {
-                if (["completed", "pending"].indexOf(status) === -1) {
-                    return res.status(400).send({
-                        status: false,
-                        message: `Unable to update status due to Non-cancellation policy.`
-                    })
+                if (status == "cancelled") {
+                    return res.status(400).send({ status: false, message: `Cannot cancel the order due to Non-cancellable policy.` })
+                }
+                if (status == "pending") {
+                    return res.status(400).send({ status: false, message: `Cannot update status from pending to pending.` })
                 }
 
-                // if ((status === 'pending' || status === 'completed' || status === 'cancelled')) {
                 const updatedOrderDetails = await orderModel.findOneAndUpdate({ _id: orderId }, { $set: { status: status } }, { new: true })
 
                 return res.status(200).send({ status: true, message: `Successfully updated the order details.`, data: updatedOrderDetails })
-                    // }
-                    // return res.status(400).send({ status: true, message: `Status must be either- 'pending','completed' & 'cancelled'.` })
+               
             }
         }
 
@@ -258,4 +261,8 @@ const updateOrder = async(req, res) => {
     }
 }
 
-module.exports = { orderCreation, updateOrder };
+module.exports = { orderCreation, updateOrder }
+
+
+
+
